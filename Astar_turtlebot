@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
+import copy
+import imutils
+import sys
+import time
+import math
+
+print("Please enter all the following values in meters.")
+print()
+
+start_x = float(input("Enter starting x-coordinate: "))       #user inputs the starting coordinates
+start_y = float(input("Enter starting y-coordinate: "))
+start_theta = float(input("Enter starting theta (the direction the robot is facing): "))
+print("Starting values saved.")
+print()
+goal_x = float(input("Enter finishing x-coordinate: "))       #user inputs the ending coordinates
+goal_y = float(input("Enter finishing y-coordinate: "))
+print("Ending values saved.")
+print()
+RPM1 = float(input("Enter the lower RPM value: "))        #user inputs the wheel RPM values 
+RPM2 = float(input("Enter the higher RPM value: "))
+print("RPM values saved.")
+print()
+clearance = float(input("Enter the robot clearnace around walls/obstacles: "))        #user inputs the clearance value
+print("Clearance value saved.")
+print()
+
+clearance = int(clearance * 100)
+
+plt.clf()
+
+def CoordToString(x,y):
+    if x // 10 < 1:        #lists location as a string with 8 integers (x and y coords) (00000000 to 10001000)
+        stringx = '000'
+    elif x // 10 < 10:
+        stringx = '00'
+    elif x // 10 < 100:
+        stringx = '0'
+    else:
+        stringx = ''     
+    if y // 10 < 1:
+        stringy = '000'
+    elif y // 10 < 10:
+        stringy = '00'
+    elif y // 10 < 100:
+        stringy = '0'
+    else:
+        stringy = '' 
+    return stringx,stringy
+
+obstacles = []  
+
+for i in range(0,clearance+1):      #left boundary
+    for j in range(0,1001):
+        x = i
+        y = j
+        stringx,stringy = CoordToString(x,y)
+        location = str(stringx+str(int(x))+stringy+str(int(y)))
+        obstacles.append(location)
+      
+for i in range(0,1001):      #bottom boundary
+    for j in range(0,clearance+1):
+        x = i
+        y = j
+        stringx,stringy = CoordToString(x,y)
+        location = str(stringx+str(int(x))+stringy+str(int(y)))
+        obstacles.append(location)
+    
+for i in range(1000-clearance,1001):      #right boundary
+    for j in range(0,1001):
+        x = i
+        y = j
+        stringx,stringy = CoordToString(x,y)
+        location = str(stringx+str(int(x))+stringy+str(int(y)))
+        obstacles.append(location)
+    
+for i in range(0,1001):      #top boundary
+    for j in range(1000-clearance,1001):
+        x = i
+        y = j
+        stringx,stringy = CoordToString(x,y)
+        location = str(stringx+str(int(x))+stringy+str(int(y)))
+        obstacles.append(location)
+
+for i in range(100-clearance,300+clearance):     #obstacle 1: circle
+    for j in range(100-clearance,300+clearance):
+        if ((i-200)**2 + (j-200)**2 < (100+clearance)**2):
+            x = i
+            y = j
+            stringx,stringy = CoordToString(x,y)
+            location = str(stringx+str(int(x))+stringy+str(int(y)))
+            obstacles.append(location)
+        else:
+            pass
+
+for i in range(100-clearance,300+clearance):     #obstacle 2: circle
+    for j in range(700-clearance,900+clearance):
+        if ((i-200)**2 + (j-800)**2 < (100+clearance)**2):
+            x = i
+            y = j
+            stringx,stringy = CoordToString(x,y)
+            location = str(stringx+str(int(x))+stringy+str(int(y)))
+            obstacles.append(location)
+        else:
+            pass
+
+for i in range(25-clearance,176+clearance):        #obstacle 3: sqaure
+    for j in range(425-clearance,576+clearance):
+            x = i
+            y = j
+            stringx,stringy = CoordToString(x,y)
+            location = str(stringx+str(int(x))+stringy+str(int(y)))
+            obstacles.append(location)
+
+for i in range(375-clearance,626+clearance):        #obstacle 4: rectangle
+    for j in range(425-clearance,576+clearance):
+            x = i
+            y = j
+            stringx,stringy = CoordToString(x,y)
+            location = str(stringx+str(int(x))+stringy+str(int(y)))
+            obstacles.append(location)
+        
+for i in range(725-clearance,876+clearance):        #obstacle 5: rectangle
+    for j in range(200-clearance,401+clearance):
+            x = i
+            y = j
+            stringx,stringy = CoordToString(x,y)
+            location = str(stringx+str(int(x))+stringy+str(int(y)))
+            obstacles.append(location)
+        
+startx,starty = CoordToString(int(start_x*100),int(start_y*100)) 
+start_loc = str(startx+str(int(start_x*100))+starty+str(int(start_y*100)))
+
+goalx,goaly = CoordToString(int(goal_x*100),int(goal_y*100)) 
+goal_loc = str(goalx+str(int(goal_x*100))+goaly+str(int(goal_y*100)))
+        
+if start_loc in obstacles:          #checks that are the inputs are valid
+    print("Starting coordinates are either in obstacle or too close to obstacle/boundary. Please try again.")
+    sys.exit()
+   
+if goal_loc in obstacles:
+    print("Goal coordinates are either in obstacle or too close to obstacle/boundary. Please try again.")
+    sys.exit()
+
+if start_x > 10 or start_x < 0 or start_y > 10 or start_y < 0:
+    print("Starting coordinates are outside boundaries. Please try again.")
+    sys.exit()
+    
+if goal_x > 10 or goal_x < 0 or goal_y > 10 or goal_y < 0:
+    print("Goal coordinates are outside boundaries. Please try again.")
+    sys.exit()
+
+plt.figure(figsize=(15,15))
+
+circle1 = plt.Circle((2,2), radius=1, fc='y')
+circle2 = plt.Circle((2,8), radius=1, fc='y')
+rectangle1 = plt.Rectangle((0.75,4.25), 1.5, 1.5, fc='y')
+rectangle2 = plt.Rectangle((3.75,4.25), 2.5, 1.5, fc='y')
+rectangle3 = plt.Rectangle((7.25,2), 1.5, 2, fc='y')
+
+circle_start = plt.Circle((start_x,start_y), radius=0.1, fc='g')
+circle_end = plt.Circle((goal_x,goal_y), radius=0.1, fc='r')
+
+plt.gca().add_patch(circle1)
+plt.gca().add_patch(circle2)
+plt.gca().add_patch(rectangle1)
+plt.gca().add_patch(rectangle2)
+plt.gca().add_patch(rectangle3)
+plt.gca().add_patch(circle_start)
+plt.gca().add_patch(circle_end)
+
+actions = [[RPM1,RPM1],[RPM1,0],[0,RPM1],[RPM1,RPM2],[RPM2,RPM1],[RPM2,RPM2],[0,RPM2],[RPM2,0]]
+path = ['A','B','C','D','E','F','G','H']
+
+travelled = {}
+travelled = {start_loc : [0,'Q',start_theta,0]}       #the dictionary of travelled points
+
+def plot_curve(Xi,Yi,Thetai,UL,UR):    
+    t = 0    
+    r = 0.038
+    L = 0.354
+    dt = 0.1    
+    Xn=Xi    
+    Yn=Yi    
+    Thetan = 3.14 * Thetai / 180
+    D=0    
+    while t<0.5:        
+        t = t + dt        
+        Xs = Xn        
+        Ys = Yn        
+        Xn += 0.5*r * (UL + UR) * math.cos(Thetan) * dt        
+        Yn += 0.5*r * (UL + UR) * math.sin(Thetan) * dt        
+        Thetan += (r / L) * (UR - UL) * dt        
+        D = math.sqrt(math.pow((0.5*r * (UL + UR) * math.cos(Thetan) * dt),2)+math.pow((0.5*r * (UL + UR) * math.sin(Thetan) * dt),2))
+        plt.plot([Xs, Xn], [Ys, Yn], color="blue")    
+    Thetan = 180 * (Thetan) / 3.14    
+    return Xn, Yn, Thetan, D
+
+def plot_curve2(Xi,Yi,Thetai,UL,UR):    
+    t = 0    
+    r = 0.038
+    L = 0.354
+    dt = 0.1    
+    Xn=Xi    
+    Yn=Yi    
+    Thetan = 3.14 * Thetai / 180
+    D=0    
+    while t<0.5:        
+        t = t + dt        
+        Xs = Xn        
+        Ys = Yn        
+        Xn += 0.5*r * (UL + UR) * math.cos(Thetan) * dt        
+        Yn += 0.5*r * (UL + UR) * math.sin(Thetan) * dt        
+        Thetan += (r / L) * (UR - UL) * dt        
+        D = math.sqrt(math.pow((0.5*r * (UL + UR) * math.cos(Thetan) * dt),2)+math.pow((0.5*r * (UL + UR) * math.sin(Thetan) * dt),2))
+        plt.plot([Xs, Xn], [Ys, Yn], color="red")    
+    Thetan = 180 * (Thetan) / 3.14    
+    return Xn, Yn, Thetan, D
+
+def checkGoal(x,y):         #function checks if the current node is within the accepted radius of the goal
+    if (goal_x - 0.2 <= x <= goal_x + 0.2) and (goal_y - 0.2 <= y <= goal_y + 0.2):
+        return True
+    else:
+        return False
+    
+current_x = copy.deepcopy(start_x)
+current_y = copy.deepcopy(start_y)
+current_cost = travelled[start_loc][0]
+current_p = travelled[start_loc][1]
+current_theta = travelled[start_loc][2]
+current_ctc = travelled[start_loc][3]
+
+while checkGoal(current_x,current_y) == False:
+    i = 0
+    for action in actions:   
+        p = path[i]
+        i += 1
+        X1=plot_curve(current_x,current_y,current_theta,action[0],action[1])  
+        x,y = CoordToString(int(round(X1[0],2)*100), int(round(X1[1],2)*100))
+        loc = str(x+(str(int(round(X1[0],2)*100)))+y+(str(int(round(X1[1],2)*100))))
+        if (loc not in obstacles) and (loc not in travelled) and X1[0] > 0 and X1[0] < 10 and X1[1] > 0 and X1[1] < 10:
+            ctg = math.sqrt(((goal_x-X1[0])**2)+((goal_y-X1[1])**2))
+            ctc = current_ctc + X1[3]
+            cost = ctc + ctg
+            p = current_p + p
+            update = {loc : [cost,p,X1[2],ctc]}
+            travelled.update(update)
+            
+    del travelled[start_loc]
+    travelled = {k: v for k, v in sorted(travelled.items(), key=lambda item: item[1])}
+    start_loc = list(travelled.keys())[0]           #updates the next parent node to be the one with the lowest cost
+    current_x = int(start_loc[0:4]) / 100
+    current_y = int(start_loc[4:]) / 100
+    current_cost = list(travelled.values())[0][0]
+    current_p = list(travelled.values())[0][1]
+    current_theta = list(travelled.values())[0][2]
+    current_ctc = list(travelled.values())[0][3]
+    print(current_x, current_y)
+
+path_x = copy.deepcopy(start_x)
+path_y = copy.deepcopy(start_y)
+path_theta = copy.deepcopy(start_theta)
+
+action_sequence = []
+
+for i in current_p:         #shows optimal path by back tracking from first parent node to reach solution
+    if i == 'Q':
+        pass
+    elif i == 'A':
+        X = plot_curve2(path_x,path_y,path_theta,actions[0][0],actions[0][1])
+        path_x = round(X[0],2)
+        path_y = round(X[1],2)
+        path_theta = X[2]
+        action_sequence.append([RPM1,RPM1])
+    elif i == 'B':
+        X = plot_curve2(path_x,path_y,path_theta,actions[1][0],actions[1][1])
+        path_x = round(X[0],2)
+        path_y = round(X[1],2)
+        path_theta = X[2]
+        action_sequence.append([RPM1,0])
+    elif i == 'C':
+        X = plot_curve2(path_x,path_y,path_theta,actions[2][0],actions[2][1])
+        path_x = round(X[0],2)
+        path_y = round(X[1],2)
+        path_theta = X[2]
+        action_sequence.append([0,RPM1])
+    elif i == 'D':
+        X = plot_curve2(path_x,path_y,path_theta,actions[3][0],actions[3][1])
+        path_x = round(X[0],2)
+        path_y = round(X[1],2)
+        path_theta = X[2]
+        action_sequence.append([RPM1,RPM2])
+    elif i == 'E':
+        X = plot_curve2(path_x,path_y,path_theta,actions[4][0],actions[4][1])
+        path_x = round(X[0],2)
+        path_y = round(X[1],2)
+        path_theta = X[2]
+        action_sequence.append([RPM2,RPM1])
+    elif i == 'F':
+        X = plot_curve2(path_x,path_y,path_theta,actions[5][0],actions[5][1])
+        path_x = round(X[0],2)
+        path_y = round(X[1],2)
+        path_theta = X[2]
+        action_sequence.append([RPM2,RPM2])
+    elif i == 'G':
+        X = plot_curve2(path_x,path_y,path_theta,actions[6][0],actions[6][1])
+        path_x = round(X[0],2)
+        path_y = round(X[1],2)
+        path_theta = X[2]
+        action_sequence.append([0,RPM2])
+    elif i == 'H':
+        X = plot_curve2(path_x,path_y,path_theta,actions[7][0],actions[7][1])
+        path_x = round(X[0],2)
+        path_y = round(X[1],2)
+        path_theta = X[2]
+        action_sequence.append([RPM2,0])
+
+print(action_sequence)
+
+plt.grid()
+plt.axis([0,10,0,10])
+plt.show()
