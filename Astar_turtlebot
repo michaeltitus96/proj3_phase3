@@ -159,7 +159,7 @@ plt.figure(figsize=(15,15))
 
 circle1 = plt.Circle((2,2), radius=1, fc='y')
 circle2 = plt.Circle((2,8), radius=1, fc='y')
-rectangle1 = plt.Rectangle((0.75,4.25), 1.5, 1.5, fc='y')
+rectangle1 = plt.Rectangle((0.25,4.25), 1.5, 1.5, fc='y')
 rectangle2 = plt.Rectangle((3.75,4.25), 2.5, 1.5, fc='y')
 rectangle3 = plt.Rectangle((7.25,2), 1.5, 2, fc='y')
 
@@ -325,3 +325,4 @@ print(action_sequence)
 plt.grid()
 plt.axis([0,10,0,10])
 plt.show()
+plt.close()
