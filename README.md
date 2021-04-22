@@ -1,9 +1,9 @@
 # proj3_phase3
 
-Starting coordinates = [1,1,45]
+Starting coordinates = [1,1,0]
 Ending coordinates = [9,9]
-RPM Values = [10,20] (or you can use [15,30])
-Clearance = anything between 0.2 and 0.4
+RPM Values = [10,20] 
+Clearance = 0.2
 
 The time of each action state is 0.5 seconds.
 
